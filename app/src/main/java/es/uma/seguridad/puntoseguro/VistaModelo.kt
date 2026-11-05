@@ -120,6 +120,9 @@ class VistaModelo(private val repositorio: Repositorio) : ViewModel() {
      * antes de seguir y compruébala en la sección 5.5.
      */
     fun salir() {
+        // Se pone en Reposo ANTES de lanzar la corrutina: si no, la pantalla de
+        // acceso todavía ve Exito y vuelve a navegar sola a la lista.
+        _estadoLogin.value = EstadoUi.Reposo
         viewModelScope.launch {
             repositorio.cerrarSesion()
             _estadoLogin.value = EstadoUi.Reposo

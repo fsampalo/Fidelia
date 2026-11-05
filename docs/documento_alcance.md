@@ -2,7 +2,7 @@
 
 **Grupo C** · Seguridad en Entornos Móviles · Cierre del Bloque II
 
-Fernando Sampalo Gómez · Pablo Anguita Pérez · Eric García Pedrosas · Pablo Rodríguez Gómez
+Fernando Sampalo Gómez · Pablo Anguita Pérez · Eric García Pedrosa · Pablo Rodríguez Gómez
 
 ---
 
@@ -62,5 +62,5 @@ Paquete `es.uma.seguridad.puntoseguro`.
 |---|---|---|
 | Fernando Sampalo Gómez | Autenticación | Inicio de sesión, token de sesión y cierre de sesión que borra los datos locales |
 | Pablo Anguita Pérez | Almacenamiento local de datos sensibles | Copia local de movimientos y códigos en Room y fotos de tiques en el dispositivo |
-| Eric García Pedrosas | API remota | Cliente Retrofit (acceso, movimientos, saldo y canje) y ampliación del backend `servidor_fidelia.py` |
+| Eric García Pedrosa | API remota | Cliente Retrofit (acceso, movimientos, saldo y canje) y ampliación del backend `servidor_fidelia.py` |
 | Pablo Rodríguez Gómez | Permiso peligroso | Cámara pedida en contexto para escanear tiques, con `uses-feature required="false"` |

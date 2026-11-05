@@ -8,7 +8,7 @@
 |---|---|
 | Fernando Sampalo Gómez | Autenticación |
 | Pablo Anguita Pérez | Almacenamiento local |
-| Eric García Pedrosas | API remota |
+| Eric García Pedrosa | API remota |
 | Pablo Rodríguez Gómez | Permiso de cámara |
 
 ## Descripción
