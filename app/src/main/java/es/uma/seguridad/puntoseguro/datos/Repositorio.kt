@@ -1,5 +1,6 @@
 package es.uma.seguridad.puntoseguro.datos
 
+import android.graphics.Bitmap
 import android.util.Log
 import es.uma.seguridad.puntoseguro.modelo.*
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +24,9 @@ import java.io.IOException
 class Repositorio(
     private val api: ApiServicio,
     private val sesion: SesionLocal,
-    private val dao: MovimientoDao
+    private val dao: MovimientoDao,
+    private val tiques: AlmacenTiques,
+    private val canjeDao: CanjeDao
 ) {
 
     /**
@@ -164,6 +167,86 @@ class Repositorio(
             }
         }
 
+    /* ---------------------------------------------------------------------
+       PUNTOS Y CANJE
+       El saldo y los códigos los decide el servidor (servidor_fidelia.py).
+       Con el backend común estas rutas no existen y devuelven 404: la
+       aplicación lo trata como un error y sigue funcionando.
+       --------------------------------------------------------------------- */
+
+    suspend fun obtenerSaldo(): EstadoUi<Int> = withContext(Dispatchers.IO) {
+        val token = sesion.obtenerToken()
+            ?: return@withContext EstadoUi.Error(MotivoError.SesionCaducada)
+        try {
+            EstadoUi.Exito(api.saldo("Bearer $token").puntos)
+        } catch (e: IOException) {
+            EstadoUi.Error(MotivoError.SinConexion)
+        } catch (e: Exception) {
+            EstadoUi.Error(MotivoError.Desconocido)
+        }
+    }
+
+    suspend fun obtenerCatalogo(): EstadoUi<List<Recompensa>> = withContext(Dispatchers.IO) {
+        val token = sesion.obtenerToken()
+            ?: return@withContext EstadoUi.Error(MotivoError.SesionCaducada)
+        try {
+            EstadoUi.Exito(api.catalogo("Bearer $token").recompensas)
+        } catch (e: IOException) {
+            EstadoUi.Error(MotivoError.SinConexion)
+        } catch (e: Exception) {
+            EstadoUi.Error(MotivoError.Desconocido)
+        }
+    }
+
+    /** Códigos del usuario. Guarda una copia local y la usa si la red falla. */
+    suspend fun obtenerCanjes(): EstadoUi<List<Canje>> = withContext(Dispatchers.IO) {
+        val token = sesion.obtenerToken()
+            ?: return@withContext EstadoUi.Error(MotivoError.SesionCaducada)
+        val propietario = sesion.obtenerUsuario() ?: ""
+        try {
+            val canjes = api.canjes("Bearer $token").canjes
+            canjeDao.guardar(canjes.map { it.aEntidad(propietario) })
+            EstadoUi.Exito(canjes)
+        } catch (e: Exception) {
+            val copiaLocal = canjeDao.obtenerDe(propietario)
+            if (copiaLocal.isEmpty()) EstadoUi.Error(MotivoError.SinConexion)
+            else EstadoUi.Exito(copiaLocal.map { Canje(it.codigo, it.descripcion, it.puntos, it.fecha) })
+        }
+    }
+
+    /** Pide al servidor que canjee una recompensa. Es el servidor quien comprueba el saldo. */
+    suspend fun canjear(recompensa: Int): ResultadoCanje = withContext(Dispatchers.IO) {
+        val token = sesion.obtenerToken()
+            ?: return@withContext ResultadoCanje.Fallo(MotivoError.SesionCaducada)
+        val propietario = sesion.obtenerUsuario() ?: ""
+        try {
+            val canje = api.canjear("Bearer $token", PeticionCanje(recompensa))
+            canjeDao.guardar(listOf(canje.aEntidad(propietario)))
+            ResultadoCanje.Hecho(canje)
+        } catch (e: HttpException) {
+            if (e.code() == 409) ResultadoCanje.SaldoInsuficiente
+            else ResultadoCanje.Fallo(MotivoError.Desconocido)
+        } catch (e: IOException) {
+            ResultadoCanje.Fallo(MotivoError.SinConexion)
+        } catch (e: Exception) {
+            ResultadoCanje.Fallo(MotivoError.Desconocido)
+        }
+    }
+
+    private fun Canje.aEntidad(propietario: String) =
+        CanjeEntidad(codigo, descripcion, puntos, fecha, propietario)
+
+    /** Guarda la foto de un tique en el dispositivo y devuelve el resumen actualizado. */
+    suspend fun guardarTique(foto: Bitmap): ResumenTiques = withContext(Dispatchers.IO) {
+        tiques.guardar(foto)
+        ResumenTiques(tiques.listar().size, tiques.ultimaMiniatura())
+    }
+
+    /** Cuántos tiques hay guardados y la miniatura del último. */
+    suspend fun resumenTiques(): ResumenTiques = withContext(Dispatchers.IO) {
+        ResumenTiques(tiques.listar().size, tiques.ultimaMiniatura())
+    }
+
     /**
      * Cierra la sesión.
      *
@@ -180,7 +263,9 @@ class Repositorio(
             val propietario = sesion.obtenerUsuario()
             if (propietario != null) {
                 dao.borrarDe(propietario)
+                canjeDao.borrarDe(propietario)
             }
+            tiques.borrarTodo()
             sesion.cerrarSesion()
         }
     }

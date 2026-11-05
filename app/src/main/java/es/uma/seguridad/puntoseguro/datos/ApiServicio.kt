@@ -46,6 +46,23 @@ interface ApiServicio {
         @Path("id") id: Int
     ): Movimiento
 
+    /* ---------- Rutas propias de Fidelia (backend/servidor_fidelia.py) ---------- */
+
+    @GET("api/saldo")
+    suspend fun saldo(@Header("Authorization") autorizacion: String): Saldo
+
+    @GET("api/catalogo")
+    suspend fun catalogo(@Header("Authorization") autorizacion: String): RespuestaCatalogo
+
+    @GET("api/canjes")
+    suspend fun canjes(@Header("Authorization") autorizacion: String): RespuestaCanjes
+
+    @POST("api/canjes")
+    suspend fun canjear(
+        @Header("Authorization") autorizacion: String,
+        @Body peticion: PeticionCanje
+    ): Canje
+
     @GET("api/perfil")
     suspend fun perfil(@Header("Authorization") autorizacion: String): Perfil
 }

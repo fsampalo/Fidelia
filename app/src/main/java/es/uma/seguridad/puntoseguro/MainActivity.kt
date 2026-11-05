@@ -30,10 +30,13 @@ class MainActivity : ComponentActivity() {
             WindowManager.LayoutParams.FLAG_SECURE
         )
 
+        val baseDatos = BaseDatos.obtener(applicationContext)
         val repositorio = Repositorio(
             api = ClienteRed.crear(),
             sesion = SesionLocal(applicationContext),
-            dao = BaseDatos.obtener(applicationContext).movimientoDao()
+            dao = baseDatos.movimientoDao(),
+            tiques = AlmacenTiques(applicationContext),
+            canjeDao = baseDatos.canjeDao()
         )
 
         setContent {

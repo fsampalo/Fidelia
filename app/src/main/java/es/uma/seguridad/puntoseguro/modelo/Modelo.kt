@@ -111,3 +111,59 @@ sealed interface MotivoError {
     data object SesionCaducada : MotivoError
     data object Desconocido : MotivoError
 }
+
+/* --------------------------------------------------------------------------
+   PUNTOS Y CANJE (rutas propias de Fidelia, backend/servidor_fidelia.py)
+   -------------------------------------------------------------------------- */
+
+/** Respuesta de GET /api/saldo */
+@Serializable
+data class Saldo(
+    val usuario: String = "",
+    val puntos: Int = 0
+)
+
+/** Una recompensa del catálogo que se puede canjear por puntos. */
+@Serializable
+data class Recompensa(
+    val id: Int = 0,
+    val descripcion: String = "",
+    val puntos: Int = 0
+)
+
+/** Respuesta de GET /api/catalogo */
+@Serializable
+data class RespuestaCatalogo(
+    val recompensas: List<Recompensa> = emptyList()
+)
+
+/**
+ * Un código canjeado. Es el dato más sensible de la aplicación: equivale a
+ * dinero, y quien lo lea puede gastarlo sin ser el titular.
+ */
+@Serializable
+data class Canje(
+    val codigo: String = "",
+    val descripcion: String = "",
+    val puntos: Int = 0,
+    val fecha: String = ""
+)
+
+/** Respuesta de GET /api/canjes */
+@Serializable
+data class RespuestaCanjes(
+    val canjes: List<Canje> = emptyList()
+)
+
+/** Petición de POST /api/canjes */
+@Serializable
+data class PeticionCanje(
+    val recompensa: Int
+)
+
+/** Resultado de intentar un canje: el servidor es quien decide si hay saldo. */
+sealed interface ResultadoCanje {
+    data class Hecho(val canje: Canje) : ResultadoCanje
+    data object SaldoInsuficiente : ResultadoCanje
+    data class Fallo(val motivo: MotivoError) : ResultadoCanje
+}

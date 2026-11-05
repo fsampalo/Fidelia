@@ -1,9 +1,11 @@
 package es.uma.seguridad.puntoseguro.ui
 
 import android.Manifest
+import android.graphics.Bitmap
 import android.content.pm.PackageManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -13,19 +15,16 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
+import es.uma.seguridad.puntoseguro.datos.ResumenTiques
 import es.uma.seguridad.puntoseguro.modelo.*
-
-/**
- * Saldo PROVISIONAL: el backend común no ofrece saldo ni puntos, así que se
- * calcula en la aplicación a partir del número de movimientos. Se sustituirá
- * por el valor del servidor si el backend llega a ofrecerlo.
- */
-private const val PUNTOS_POR_MOVIMIENTO = 100
 
 /**
  * Pantalla principal: saldo, acceso a la cámara para escanear tiques e
@@ -35,6 +34,10 @@ private const val PUNTOS_POR_MOVIMIENTO = 100
 @Composable
 fun PantallaLista(
     estado: EstadoUi<List<Movimiento>>,
+    saldo: EstadoUi<Int>,
+    tiques: ResumenTiques,
+    onCanjes: () -> Unit,
+    onFotoTomada: (Bitmap) -> Unit,
     onRecargar: () -> Unit,
     onSalir: () -> Unit,
     onAbrir: (Int) -> Unit
@@ -47,10 +50,17 @@ fun PantallaLista(
                 == PackageManager.PERMISSION_GRANTED
         )
     }
+    // La cámara del sistema devuelve una miniatura del tique
+    val camara = rememberLauncherForActivityResult(
+        ActivityResultContracts.TakePicturePreview()
+    ) { foto: Bitmap? ->
+        if (foto != null) onFotoTomada(foto)
+    }
     val lanzador = rememberLauncherForActivityResult(
         ActivityResultContracts.RequestPermission()
     ) { resultado ->
         concedido = resultado
+        if (resultado) camara.launch(null)
     }
 
     Scaffold(
@@ -82,8 +92,7 @@ fun PantallaLista(
         ) {
             Spacer(Modifier.height(16.dp))
 
-            // ---------- Saldo ----------
-            val numMovimientos = (estado as? EstadoUi.Exito)?.datos?.size
+            // ---------- Saldo (lo decide el servidor) ----------
             Card(
                 shape = RoundedCornerShape(20.dp),
                 colors = CardDefaults.cardColors(
@@ -97,7 +106,7 @@ fun PantallaLista(
                     Spacer(Modifier.height(4.dp))
                     Row(verticalAlignment = Alignment.Bottom) {
                         Text(
-                            text = numMovimientos?.let { "${it * PUNTOS_POR_MOVIMIENTO}" } ?: "—",
+                            text = (saldo as? EstadoUi.Exito)?.datos?.toString() ?: "—",
                             style = MaterialTheme.typography.displaySmall,
                             fontWeight = FontWeight.Bold
                         )
@@ -110,9 +119,24 @@ fun PantallaLista(
                         )
                     }
                     Text(
-                        "Provisional: calculado en la app ($PUNTOS_POR_MOVIMIENTO pts por movimiento)",
+                        when (saldo) {
+                            is EstadoUi.Exito -> "Actualizado desde el servidor"
+                            is EstadoUi.Cargando -> "Consultando el saldo..."
+                            is EstadoUi.Error -> "Saldo no disponible (¿está arrancado servidor_fidelia.py?)"
+                            is EstadoUi.Reposo -> "Pulsa Recargar para consultar tu saldo"
+                        },
                         style = MaterialTheme.typography.bodySmall
                     )
+                    Spacer(Modifier.height(12.dp))
+                    OutlinedButton(
+                        onClick = onCanjes,
+                        shape = RoundedCornerShape(12.dp),
+                        colors = ButtonDefaults.outlinedButtonColors(
+                            contentColor = MaterialTheme.colorScheme.onPrimary
+                        )
+                    ) {
+                        Text("Canjear puntos")
+                    }
                 }
             }
 
@@ -120,7 +144,10 @@ fun PantallaLista(
 
             // ---------- Escanear tique (cámara) ----------
             Button(
-                onClick = { lanzador.launch(Manifest.permission.CAMERA) },
+                onClick = {
+                    if (concedido) camara.launch(null)
+                    else lanzador.launch(Manifest.permission.CAMERA)
+                },
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = MaterialTheme.colorScheme.secondary,
@@ -128,7 +155,28 @@ fun PantallaLista(
                 ),
                 modifier = Modifier.fillMaxWidth().height(48.dp)
             ) {
-                Text(if (concedido) "Cámara lista para escanear tiques" else "Escanear tique de compra")
+                Text("Escanear tique de compra")
+            }
+            if (tiques.numero > 0) {
+                Spacer(Modifier.height(10.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    tiques.ultima?.let { miniatura ->
+                        Image(
+                            bitmap = miniatura.asImageBitmap(),
+                            contentDescription = "Último tique escaneado",
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .size(48.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                        )
+                        Spacer(Modifier.width(10.dp))
+                    }
+                    Text(
+                        "Tiques escaneados: ${tiques.numero} (guardados en el dispositivo)",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             if (!concedido) {
                 Text(
@@ -213,19 +261,6 @@ private fun TarjetaMovimiento(movimiento: Movimiento, onClick: () -> Unit) {
                     movimiento.fecha,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
-            }
-            Spacer(Modifier.width(8.dp))
-            Surface(
-                shape = RoundedCornerShape(50),
-                color = MaterialTheme.colorScheme.secondaryContainer,
-                contentColor = MaterialTheme.colorScheme.onSecondaryContainer
-            ) {
-                Text(
-                    "+$PUNTOS_POR_MOVIMIENTO",
-                    style = MaterialTheme.typography.labelMedium,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp)
                 )
             }
         }

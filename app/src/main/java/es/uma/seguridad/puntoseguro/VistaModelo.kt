@@ -2,7 +2,9 @@ package es.uma.seguridad.puntoseguro
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import android.graphics.Bitmap
 import es.uma.seguridad.puntoseguro.datos.Repositorio
+import es.uma.seguridad.puntoseguro.datos.ResumenTiques
 import es.uma.seguridad.puntoseguro.modelo.*
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -31,6 +33,23 @@ class VistaModelo(private val repositorio: Repositorio) : ViewModel() {
     private val _estadoDetalle = MutableStateFlow<EstadoUi<Movimiento>>(EstadoUi.Reposo)
     val estadoDetalle: StateFlow<EstadoUi<Movimiento>> = _estadoDetalle.asStateFlow()
 
+    private val _tiques = MutableStateFlow(ResumenTiques())
+    val tiques: StateFlow<ResumenTiques> = _tiques.asStateFlow()
+
+    // Puntos y canje
+    private val _estadoSaldo = MutableStateFlow<EstadoUi<Int>>(EstadoUi.Reposo)
+    val estadoSaldo: StateFlow<EstadoUi<Int>> = _estadoSaldo.asStateFlow()
+
+    private val _estadoCatalogo = MutableStateFlow<EstadoUi<List<Recompensa>>>(EstadoUi.Reposo)
+    val estadoCatalogo: StateFlow<EstadoUi<List<Recompensa>>> = _estadoCatalogo.asStateFlow()
+
+    private val _estadoCanjes = MutableStateFlow<EstadoUi<List<Canje>>>(EstadoUi.Reposo)
+    val estadoCanjes: StateFlow<EstadoUi<List<Canje>>> = _estadoCanjes.asStateFlow()
+
+    /** Último resultado de un canje, para mostrarlo una vez en pantalla. */
+    private val _resultadoCanje = MutableStateFlow<ResultadoCanje?>(null)
+    val resultadoCanje: StateFlow<ResultadoCanje?> = _resultadoCanje.asStateFlow()
+
     fun entrar(usuario: String, clave: String) {
         viewModelScope.launch {
             _estadoLogin.value = EstadoUi.Cargando
@@ -43,6 +62,43 @@ class VistaModelo(private val repositorio: Repositorio) : ViewModel() {
             _estadoLista.value = EstadoUi.Cargando
             _estadoLista.value = repositorio.obtenerElementos()
         }
+    }
+
+    fun cargarSaldo() {
+        viewModelScope.launch { _estadoSaldo.value = repositorio.obtenerSaldo() }
+    }
+
+    /** Carga todo lo que necesita la pantalla de canje. */
+    fun cargarCanje() {
+        viewModelScope.launch {
+            _estadoCatalogo.value = EstadoUi.Cargando
+            _estadoSaldo.value = repositorio.obtenerSaldo()
+            _estadoCatalogo.value = repositorio.obtenerCatalogo()
+            _estadoCanjes.value = repositorio.obtenerCanjes()
+        }
+    }
+
+    fun canjear(recompensa: Int) {
+        viewModelScope.launch {
+            val resultado = repositorio.canjear(recompensa)
+            _resultadoCanje.value = resultado
+            if (resultado is ResultadoCanje.Hecho) {
+                _estadoSaldo.value = repositorio.obtenerSaldo()
+                _estadoCanjes.value = repositorio.obtenerCanjes()
+            }
+        }
+    }
+
+    fun olvidarResultadoCanje() {
+        _resultadoCanje.value = null
+    }
+
+    fun cargarTiques() {
+        viewModelScope.launch { _tiques.value = repositorio.resumenTiques() }
+    }
+
+    fun guardarTique(foto: Bitmap) {
+        viewModelScope.launch { _tiques.value = repositorio.guardarTique(foto) }
     }
 
     fun cargarDetalle(id: Int) {
@@ -69,6 +125,11 @@ class VistaModelo(private val repositorio: Repositorio) : ViewModel() {
             _estadoLogin.value = EstadoUi.Reposo
             _estadoLista.value = EstadoUi.Reposo
             _estadoDetalle.value = EstadoUi.Reposo
+            _tiques.value = ResumenTiques()
+            _estadoSaldo.value = EstadoUi.Reposo
+            _estadoCatalogo.value = EstadoUi.Reposo
+            _estadoCanjes.value = EstadoUi.Reposo
+            _resultadoCanje.value = null
         }
     }
 }

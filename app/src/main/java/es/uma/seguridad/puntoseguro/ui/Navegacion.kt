@@ -1,6 +1,7 @@
 package es.uma.seguridad.puntoseguro.ui
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.navigation.NavType
@@ -24,6 +25,11 @@ fun Navegacion(vistaModelo: VistaModelo) {
     val estadoLogin by vistaModelo.estadoLogin.collectAsState()
     val estadoLista by vistaModelo.estadoLista.collectAsState()
     val estadoDetalle by vistaModelo.estadoDetalle.collectAsState()
+    val tiques by vistaModelo.tiques.collectAsState()
+    val estadoSaldo by vistaModelo.estadoSaldo.collectAsState()
+    val estadoCatalogo by vistaModelo.estadoCatalogo.collectAsState()
+    val estadoCanjes by vistaModelo.estadoCanjes.collectAsState()
+    val resultadoCanje by vistaModelo.resultadoCanje.collectAsState()
 
     NavHost(navController = navController, startDestination = "login") {
 
@@ -40,9 +46,20 @@ fun Navegacion(vistaModelo: VistaModelo) {
         }
 
         composable("lista") {
+            LaunchedEffect(Unit) {
+                vistaModelo.cargarTiques()
+                vistaModelo.cargarSaldo()
+            }
             PantallaLista(
                 estado = estadoLista,
-                onRecargar = { vistaModelo.cargarElementos() },
+                saldo = estadoSaldo,
+                tiques = tiques,
+                onCanjes = { navController.navigate("canjes") },
+                onFotoTomada = { vistaModelo.guardarTique(it) },
+                onRecargar = {
+                    vistaModelo.cargarElementos()
+                    vistaModelo.cargarSaldo()
+                },
                 onSalir = {
                     vistaModelo.salir()
                     navController.navigate("login") {
@@ -50,6 +67,19 @@ fun Navegacion(vistaModelo: VistaModelo) {
                     }
                 },
                 onAbrir = { identificador -> navController.navigate("detalle/$identificador") }
+            )
+        }
+
+        composable("canjes") {
+            PantallaCanjes(
+                saldo = estadoSaldo,
+                catalogo = estadoCatalogo,
+                canjes = estadoCanjes,
+                resultado = resultadoCanje,
+                onCargar = { vistaModelo.cargarCanje() },
+                onCanjear = { vistaModelo.canjear(it) },
+                onOlvidarResultado = { vistaModelo.olvidarResultadoCanje() },
+                onVolver = { navController.popBackStack() }
             )
         }
 

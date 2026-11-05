@@ -56,10 +56,40 @@ interface MovimientoDao {
     suspend fun borrarDe(propietario: String)
 }
 
-@Database(entities = [MovimientoEntidad::class], version = 1, exportSchema = false)
+/**
+ * Copia local de los códigos canjeados, para verlos sin conexión.
+ *
+ * AVISO: se guardan SIN CIFRAR, como el resto del Bloque II. Son el dato más
+ * sensible de la aplicación y una de las primeras cosas que proteger en P3.1.
+ */
+@Entity(tableName = "canjes")
+data class CanjeEntidad(
+    @PrimaryKey val codigo: String,
+    val descripcion: String,
+    val puntos: Int,
+    val fecha: String,
+    val propietario: String
+)
+
+@Dao
+interface CanjeDao {
+
+    @Query("SELECT * FROM canjes WHERE propietario = :propietario ORDER BY fecha DESC")
+    suspend fun obtenerDe(propietario: String): List<CanjeEntidad>
+
+    @Insert(onConflict = OnConflictStrategy.REPLACE)
+    suspend fun guardar(canjes: List<CanjeEntidad>)
+
+    @Query("DELETE FROM canjes WHERE propietario = :propietario")
+    suspend fun borrarDe(propietario: String)
+}
+
+@Database(entities = [MovimientoEntidad::class, CanjeEntidad::class], version = 2, exportSchema = false)
 abstract class BaseDatos : RoomDatabase() {
 
     abstract fun movimientoDao(): MovimientoDao
+
+    abstract fun canjeDao(): CanjeDao
 
     companion object {
 
@@ -76,7 +106,11 @@ abstract class BaseDatos : RoomDatabase() {
                     contexto.applicationContext,
                     BaseDatos::class.java,
                     NOMBRE_FICHERO
-                ).build().also { instancia = it }
+                )
+                    // Versión 2 añade la tabla de canjes. En desarrollo basta con
+                    // rehacer la base de datos: es sólo una copia de lo del servidor.
+                    .fallbackToDestructiveMigration(true)
+                    .build().also { instancia = it }
             }
 
         /** El fichero acaba en /data/data/<tu.paquete>/databases/appbase.db */

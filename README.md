@@ -38,12 +38,12 @@ El dato más sensible son los **códigos canjeables**, porque equivalen a dinero
 ## Cómo compilar y ejecutar
 
 1. Clonar el repositorio y abrir la carpeta raíz en Android Studio (**File → Open**). Esperar a que termine la sincronización de Gradle.
-2. Arrancar el backend, que está en la carpeta `backend/` (sólo necesita Python 3, sin dependencias):
+2. Arrancar el backend de Fidelia, que está en la carpeta `backend/` (sólo necesita Python 3, sin dependencias):
    ```
    cd backend
-   python servidor.py
+   python servidor_fidelia.py
    ```
-   Debe mostrar `Backend de prácticas escuchando en http://0.0.0.0:8080`. Dejar esa terminal abierta y comprobar que responde con `curl http://localhost:8080/api/salud` (en Windows, `curl.exe`).
+   Debe mostrar `Backend de Fidelia escuchando en http://0.0.0.0:8080`. Dejar esa terminal abierta y comprobar que responde con `curl http://localhost:8080/api/salud` (en Windows, `curl.exe`).
 3. Ejecutar la aplicación en un emulador con el botón ▶ de Android Studio.
 4. Entrar con `ana` / `Practica2024`. Otros usuarios de prueba: `luis` / `Practica2024` y `admin` / `Administrador`.
 
@@ -59,11 +59,29 @@ Versiones usadas: Kotlin 2.2.10, AGP 9.4.1, KSP 2.2.10-2.0.2.
 
 ### Sobre el backend
 
-`backend/servidor.py` es el backend común de la asignatura, sin modificar. Sirve por HTTP sin cifrar y tiene debilidades intencionadas (contraseñas en claro, tokens predecibles, sin comprobación de propietario), que son material de estudio para los Bloques III y IV. Sus usuarios y contraseñas son de prueba, no credenciales reales. No debe usarse fuera del aula.
+En `backend/` hay dos ficheros:
+
+- `servidor.py`: el backend común de la asignatura, **sin modificar**. Sirve por HTTP sin cifrar y tiene debilidades intencionadas (contraseñas en claro, tokens predecibles, sin comprobación de propietario), que son material de estudio para los Bloques III y IV.
+- `servidor_fidelia.py`: **amplía** el común sin tocarlo. Lo importa y añade las rutas del dominio: `GET /api/saldo`, `GET /api/catalogo`, `GET /api/canjes` y `POST /api/canjes`. Todas las rutas del común siguen igual, y admite el mismo modo TLS (`CERT` y `CLAVE`) para la P3.2.
+
+La app funciona con cualquiera de los dos; con `servidor.py` el saldo y el canje aparecen como no disponibles. Los usuarios y contraseñas son de prueba, no credenciales reales. No debe usarse fuera del aula.
 
 ## Estado actual de la aplicación
 
-La aplicación funciona contra el backend y es **insegura a propósito**, como punto de partida del Bloque III: guarda la sesión y los datos sin cifrar, registra información sensible en logcat y se comunica por HTTP sin cifrar. El inventario siguiente recoge qué queda expuesto.
+Versión base del Bloque II (etiqueta `v1.0-bloque2`):
+
+- **Acceso** con usuario y contraseña contra `/api/login`.
+- **Saldo de puntos** (`/api/saldo`) e **historial de movimientos** (`/api/elementos`), con copia local de los movimientos en Room para verlos sin conexión.
+- **Canje de puntos** por códigos de descuento (`/api/catalogo` y `/api/canjes`): el servidor comprueba el saldo y genera el código; la app guarda una copia de los códigos en Room.
+- **Detalle** de un movimiento (`/api/elementos/{id}`).
+- **Enlace profundo** `fidelia://detalle/{id}`. Para probarlo con la app cerrada:
+  ```
+  adb shell am start -a android.intent.action.VIEW -d "fidelia://detalle/2" es.uma.seguridad.puntoseguro
+  ```
+- **Escaneo de tiques** con la cámara: el permiso se pide al pulsar el botón y, si se deniega, el resto de la aplicación sigue funcionando. Las fotos se guardan en el dispositivo; todavía no suman puntos porque el backend no tiene dónde recibirlas.
+- **`FLAG_SECURE`** en la ventana principal.
+
+La aplicación es **insegura a propósito**, como punto de partida del Bloque III: guarda la sesión, los datos, los códigos y las fotos sin cifrar, registra información sensible en logcat y se comunica por HTTP sin cifrar. El inventario siguiente recoge qué queda expuesto, y el [documento de alcance](docs/documento_alcance.md) añade la superficie expuesta y el modelo de amenazas.
 
 ## Inventario de datos sensibles
 
@@ -75,10 +93,10 @@ La aplicación funciona contra el backend y es **insegura a propósito**, como p
 | Nombre de usuario | `sesion.xml` y columna `propietario` de la base de datos | Cualquiera con adb y depuración activada | A completar en el Bloque III |
 | Historial de movimientos | `databases/appbase.db` (y `-wal`), sin cifrar | Cualquiera con adb; copias de seguridad (`allowBackup="true"`) | A completar en el Bloque III |
 | Historial de movimientos | Tráfico HTTP sin cifrar | Cualquiera en la misma red | A completar en el Bloque III |
-| Saldo de puntos | Base de datos local, sin cifrar | Cualquiera con adb; copias de seguridad | A completar en el Bloque III |
-| Códigos canjeables | Base de datos local, sin cifrar | Cualquiera con adb; copias de seguridad. Quien los lea puede gastarlos | A completar en el Bloque III |
-| Códigos canjeables | Tráfico HTTP sin cifrar al validar el canje | Cualquiera en la misma red | A completar en el Bloque III |
-| Fotos de los tiques | Almacenamiento de la aplicación (cuando se implemente la cámara) | Cualquiera con adb; otras aplicaciones si se guardan en almacenamiento compartido | A completar en el Bloque III |
+| Saldo de puntos | Tráfico HTTP sin cifrar (`/api/saldo`) | Cualquiera en la misma red | A completar en el Bloque III |
+| Códigos canjeables | Tabla `canjes` de `appbase.db`, sin cifrar | Cualquiera con adb; copias de seguridad. Quien los lea puede gastarlos | A completar en el Bloque III |
+| Códigos canjeables | Tráfico HTTP sin cifrar (`/api/canjes`) | Cualquiera en la misma red | A completar en el Bloque III |
+| Fotos de los tiques | `files/tiques/*.jpg`, sin cifrar | Cualquiera con adb; copias de seguridad | A completar en el Bloque III |
 | Datos personales (DNI, correo) | Tráfico HTTP de `/api/perfil` y logcat | Cualquiera en la misma red; cualquiera con adb | A completar en el Bloque III |
 
 ## Reconocimiento de una aplicación real
