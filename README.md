@@ -101,14 +101,18 @@ La aplicación es **insegura a propósito**, como punto de partida del Bloque II
 
 ## Reconocimiento de una aplicación real
 
-Aplicación analizada: _nombre_ (`nombre.del.paquete`)
+Aplicación analizada: **Google Fotos** (`com.google.android.apps.photos`, versión 7.99.0).
+El emulador no permitía iniciar sesión en Google Play, así que no pudimos instalar una aplicación de fidelización. Como permite el enunciado, analizamos una aplicación del sistema ya instalada. Elegimos esta porque, como Fidelia, usa la cámara y maneja imágenes del usuario.
 
 | Qué mirar | Con qué | Observación |
 |---|---|---|
-| Permisos declarados | `aapt2 dump permissions` | |
-| Componentes exportados | `apktool` + lectura del manifiesto | |
-| Esquemas de firma | `apksigner verify --print-certs` | |
-| minSdk y targetSdk | `aapt2 dump badging` | |
-| Número de piezas instaladas | `adb shell pm path` | |
+| Permisos declarados | `aapt2 dump permissions` | Declara 57 permisos. Muchos son peligrosos y se piden en ejecución: cámara, micrófono, ubicación precisa y aproximada, contactos, calendario (lectura y escritura), estado del teléfono, cuentas y multimedia (`READ_MEDIA_*`, `ACCESS_MEDIA_LOCATION`). Otros, como `MANAGE_MEDIA`, `WRITE_MEDIA_STORAGE` o `WRITE_SETTINGS`, solo se conceden porque es una aplicación preinstalada del sistema. Además define dos permisos propios: `C2D_MESSAGE` y `DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION` |
+| Componentes exportados | `apktool` + lectura del manifiesto | **120** componentes con `exported="true"`, entre Activities, *activity-alias*, *receivers* y *services*. Entre ellos hay Activities de enlace profundo (`ArchivedPhotosDeepLinkActivity`), diálogos como `PermanentDeleteConfirmationActivity` y varios servicios de copia de seguridad expuestos por gRPC (`PhotosBackupGrpcService`, `PhotosBackupApiService`) |
+| Esquemas de firma | `apksigner verify --print-certs` | Se verifican v3 y v3.1; v1, v2 y v4 no. Hay **dos firmantes**: un certificado antiguo (`CN=Unknown, O=Google, Inc`) para Android 7.0–12L (SDK 24–32) y uno nuevo (`CN=Android, O=Google Inc.`) para Android 13 en adelante (SDK 33+). Es una **rotación de clave** mediante v3.1. Incluye también un *Source Stamp*, que identifica la tienda de origen |
+| minSdk y targetSdk | `aapt2 dump badging` | minSdk 32 (Android 12L) y targetSdk 37, compilada contra el SDK 37 |
+| Número de piezas instaladas | `adb shell pm path` | 4 piezas: `base.apk` y tres *splits* de configuración, uno de idioma (`en`), otro de arquitectura (`x86_64`) y otro de densidad de pantalla (`xxhdpi`) |
 
-**Notas**: _¿pide algún permiso difícil de justificar? ¿cuántos componentes tiene exportados?_
+**Notas**
+- **¿Algún permiso difícil de justificar?** Para una galería de fotos cuesta justificar la **lectura y escritura del calendario**, el **estado del teléfono** (`READ_PHONE_STATE`) y la **superposición sobre otras aplicaciones** (`SYSTEM_ALERT_WINDOW`). La ubicación y los contactos se explican por funciones concretas, como ver las fotos en el mapa o compartirlas con otras personas, pero amplían mucho lo que la aplicación puede saber del usuario. Fidelia hace lo contrario: un solo permiso peligroso (la cámara), pedido en contexto y con `required="false"`.
+- **¿Cuántos componentes exportados?** **120**, frente a la única Activity exportada de Fidelia. Cada uno es una puerta de entrada que otra aplicación puede invocar. Que un componente esté exportado no significa que esté desprotegido, porque muchos estarán protegidos con `android:permission`, pero cada uno hay que revisarlo. Es justo lo que hará el grupo auditor en el Bloque IV con nuestra aplicación.
+- **Algo que aplicar a nuestro proyecto:** la rotación de clave con v3.1 permite cambiar la clave de firma sin que las actualizaciones dejen de instalarse. Lo tendremos en cuenta en el Bloque III.
