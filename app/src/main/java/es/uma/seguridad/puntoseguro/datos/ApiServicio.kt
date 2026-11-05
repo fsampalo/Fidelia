@@ -39,6 +39,13 @@ interface ApiServicio {
     @GET("api/elementos")
     suspend fun elementos(@Header("Authorization") autorizacion: String): RespuestaMovimientos
 
+    /** Un movimiento concreto por su identificador (P2.3). */
+    @GET("api/elementos/{id}")
+    suspend fun elemento(
+        @Header("Authorization") autorizacion: String,
+        @Path("id") id: Int
+    ): Movimiento
+
     @GET("api/perfil")
     suspend fun perfil(@Header("Authorization") autorizacion: String): Perfil
 }
@@ -58,7 +65,7 @@ object ClienteRed {
      * recupera decompilándolo, tal como comprobaste en la práctica P2.1.
      * ¿Es eso un problema? ¿Y si en lugar de una dirección fuera una clave?
      */
-    const val BASE_URL = "http://10.0.2.2:8080/"
+    const val BASE_URL = "http://localhost:8080/"
 
     fun crear(): ApiServicio {
 

@@ -3,6 +3,9 @@ package es.uma.seguridad.puntoseguro.ui
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.navigation.NavType
+import androidx.navigation.navArgument
+import androidx.navigation.navDeepLink
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
@@ -20,6 +23,7 @@ fun Navegacion(vistaModelo: VistaModelo) {
     val navController = rememberNavController()
     val estadoLogin by vistaModelo.estadoLogin.collectAsState()
     val estadoLista by vistaModelo.estadoLista.collectAsState()
+    val estadoDetalle by vistaModelo.estadoDetalle.collectAsState()
 
     NavHost(navController = navController, startDestination = "login") {
 
@@ -44,7 +48,22 @@ fun Navegacion(vistaModelo: VistaModelo) {
                     navController.navigate("login") {
                         popUpTo("lista") { inclusive = true }
                     }
-                }
+                },
+                onAbrir = { identificador -> navController.navigate("detalle/$identificador") }
+            )
+        }
+
+        composable(
+            route = "detalle/{id}",
+            arguments = listOf(navArgument("id") { type = NavType.IntType }),
+            deepLinks = listOf(navDeepLink { uriPattern = "fidelia://detalle/{id}" })
+        ) { entrada ->
+            val id = entrada.arguments?.getInt("id") ?: 0
+            PantallaDetalle(
+                id = id,
+                estado = estadoDetalle,
+                onCargar = { vistaModelo.cargarDetalle(it) },
+                onVolver = { navController.popBackStack() }
             )
         }
     }

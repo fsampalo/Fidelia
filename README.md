@@ -13,7 +13,7 @@
 
 ## Descripción
 
-PuntoSeguro permite al usuario acumular puntos de fidelización fotografiando sus tiques de compra, consultar su saldo e historial y canjear los puntos por códigos de descuento.
+Fidelia permite al usuario acumular puntos de fidelización fotografiando sus tiques de compra, consultar su saldo e historial y canjear los puntos por códigos de descuento.
 
 El dato más sensible son los **códigos canjeables**, porque equivalen a dinero: quien los obtenga puede gastarlos sin ser el titular.
 
@@ -38,11 +38,12 @@ El dato más sensible son los **códigos canjeables**, porque equivalen a dinero
 ## Cómo compilar y ejecutar
 
 1. Clonar el repositorio y abrir la carpeta raíz en Android Studio (**File → Open**). Esperar a que termine la sincronización de Gradle.
-2. Arrancar el backend de la asignatura en el ordenador (no está en este repositorio):
+2. Arrancar el backend, que está en la carpeta `backend/` (sólo necesita Python 3, sin dependencias):
    ```
+   cd backend
    python servidor.py
    ```
-   Comprobar que responde con `curl http://localhost:8080/api/salud` (en Windows, `curl.exe`).
+   Debe mostrar `Backend de prácticas escuchando en http://0.0.0.0:8080`. Dejar esa terminal abierta y comprobar que responde con `curl http://localhost:8080/api/salud` (en Windows, `curl.exe`).
 3. Ejecutar la aplicación en un emulador con el botón ▶ de Android Studio.
 4. Entrar con `ana` / `Practica2024`. Otros usuarios de prueba: `luis` / `Practica2024` y `admin` / `Administrador`.
 
@@ -55,6 +56,10 @@ adb reverse tcp:8080 tcp:8080
 y cambiar `BASE_URL` en `datos/ApiServicio.kt` a `http://localhost:8080/`. **Este cambio no se sube al repositorio.**
 
 Versiones usadas: Kotlin 2.2.10, AGP 9.4.1, KSP 2.2.10-2.0.2.
+
+### Sobre el backend
+
+`backend/servidor.py` es el backend común de la asignatura, sin modificar. Sirve por HTTP sin cifrar y tiene debilidades intencionadas (contraseñas en claro, tokens predecibles, sin comprobación de propietario), que son material de estudio para los Bloques III y IV. Sus usuarios y contraseñas son de prueba, no credenciales reales. No debe usarse fuera del aula.
 
 ## Estado actual de la aplicación
 

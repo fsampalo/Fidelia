@@ -1,16 +1,19 @@
 package es.uma.seguridad.puntoseguro.ui
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import es.uma.seguridad.puntoseguro.modelo.*
 
 /**
- * Pantalla de acceso. ESTÁ TERMINADA: no hace falta tocarla en P2.2.
+ * Pantalla de acceso de Fidelia.
  *
  * Sigue el patrón de elevación de estado de la sesión 2.5: el composable no
  * guarda el resultado de la operación, lo recibe, y comunica lo que ocurre
@@ -25,50 +28,79 @@ fun PantallaLogin(
     var clave by remember { mutableStateOf("") }
 
     Column(
-        modifier = Modifier.fillMaxSize().padding(24.dp),
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+            .padding(24.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Text("Acceso", style = MaterialTheme.typography.headlineMedium)
-        Spacer(Modifier.height(24.dp))
-
-        OutlinedTextField(
-            value = usuario,
-            onValueChange = { usuario = it },
-            label = { Text("Usuario") },
-            singleLine = true,
-            modifier = Modifier.fillMaxWidth()
+        LogoFidelia()
+        Spacer(Modifier.height(16.dp))
+        Text(
+            "Fidelia",
+            style = MaterialTheme.typography.headlineMedium,
+            fontWeight = FontWeight.Bold,
+            color = MaterialTheme.colorScheme.primary
         )
-        Spacer(Modifier.height(12.dp))
-
-        OutlinedTextField(
-            value = clave,
-            onValueChange = { clave = it },
-            label = { Text("Contraseña") },
-            singleLine = true,
-            visualTransformation = PasswordVisualTransformation(),
-            modifier = Modifier.fillMaxWidth()
+        Text(
+            "Tu cartera de puntos de fidelización",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-        Spacer(Modifier.height(20.dp))
+        Spacer(Modifier.height(32.dp))
 
-        Button(
-            onClick = { onEntrar(usuario.trim(), clave) },
-            enabled = usuario.isNotBlank() && clave.isNotBlank() && estado !is EstadoUi.Cargando,
+        Card(
+            shape = RoundedCornerShape(20.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
             modifier = Modifier.fillMaxWidth()
         ) {
-            Text(if (estado is EstadoUi.Cargando) "Entrando..." else "Entrar")
-        }
+            Column(Modifier.padding(20.dp)) {
+                Text("Inicia sesión", style = MaterialTheme.typography.titleMedium)
+                Spacer(Modifier.height(16.dp))
 
-        Spacer(Modifier.height(16.dp))
+                OutlinedTextField(
+                    value = usuario,
+                    onValueChange = { usuario = it },
+                    label = { Text("Usuario") },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(12.dp))
 
-        // El when es exhaustivo gracias a la clase sellada del TODO 1b
-        when (estado) {
-            is EstadoUi.Error -> Text(
-                text = textoDeError(estado.motivo),
-                color = MaterialTheme.colorScheme.error
-            )
-            is EstadoUi.Cargando -> CircularProgressIndicator()
-            else -> Unit
+                OutlinedTextField(
+                    value = clave,
+                    onValueChange = { clave = it },
+                    label = { Text("Contraseña") },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                Spacer(Modifier.height(20.dp))
+
+                Button(
+                    onClick = { onEntrar(usuario.trim(), clave) },
+                    enabled = usuario.isNotBlank() && clave.isNotBlank() && estado !is EstadoUi.Cargando,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth().height(48.dp)
+                ) {
+                    Text(if (estado is EstadoUi.Cargando) "Entrando..." else "Entrar")
+                }
+
+                Spacer(Modifier.height(12.dp))
+
+                // El when es exhaustivo gracias a la clase sellada; el else de
+                // aquí es el que la P2.3 pide comparar con PantallaDetalle.
+                when (estado) {
+                    is EstadoUi.Error -> Text(
+                        text = textoDeError(estado.motivo),
+                        color = MaterialTheme.colorScheme.error
+                    )
+                    is EstadoUi.Cargando -> LinearProgressIndicator(Modifier.fillMaxWidth())
+                    else -> Unit
+                }
+            }
         }
     }
 }

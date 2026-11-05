@@ -148,6 +148,23 @@ class Repositorio(
     }
 
     /**
+     * Pide un movimiento concreto (P2.3). La línea del ?: es la ÚNICA
+     * comprobación de sesión de todo el recorrido hasta la pantalla de detalle.
+     */
+    suspend fun obtenerMovimiento(id: Int): EstadoUi<Movimiento> =
+        withContext(Dispatchers.IO) {
+            val token = sesion.obtenerToken()
+                ?: return@withContext EstadoUi.Error(MotivoError.SesionCaducada)
+            try {
+                EstadoUi.Exito(api.elemento("Bearer $token", id))
+            } catch (e: IOException) {
+                EstadoUi.Error(MotivoError.SinConexion)
+            } catch (e: Exception) {
+                EstadoUi.Error(MotivoError.Desconocido)
+            }
+        }
+
+    /**
      * Cierra la sesión.
      *
      * Borra el token y el usuario de las preferencias, que es lo que hace que
